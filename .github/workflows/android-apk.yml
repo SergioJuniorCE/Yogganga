@@ -3,9 +3,12 @@ name: Android APK
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -42,3 +45,18 @@ jobs:
           name: yogganga-release-apk
           path: app/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Publish nightly release
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/android/app/build/outputs/apk/release/app-release.apk yogganga-nightly.apk
+          title="Yogganga nightly $(date -u +%Y-%m-%d)"
+          notes="Built from main at $(date -u '+%Y-%m-%d %H:%M UTC') (${GITHUB_SHA:0:7})."
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit nightly --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
+          else
+            gh release create nightly --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes"
+          fi
+          gh release upload nightly yogganga-nightly.apk --repo "$GITHUB_REPOSITORY" --clobber
