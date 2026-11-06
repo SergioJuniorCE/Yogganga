@@ -62,6 +62,10 @@ Listens on `0.0.0.0:8787` and writes to `server/data/`.
 
 `server/.env` is loaded automatically if it exists.
 
+Turborepo runs in strict env mode, so any new server variable must also be
+added to `globalPassThroughEnv` in `turbo.json` or it will be stripped before
+the task sees it.
+
 ## App
 
 ```bash
