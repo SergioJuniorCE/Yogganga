@@ -7,9 +7,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "node scripts/dev.mjs",
     "dev:server": "turbo run dev --filter=@yogganga/server",
-    "dev:app": "turbo run dev --filter=@yogganga/app",
+    "dev:app": "pnpm --filter @yogganga/app dev",
     "start": "turbo run start --filter=@yogganga/server",
     "typecheck": "turbo run typecheck"
   },
