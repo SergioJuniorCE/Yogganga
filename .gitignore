@@ -1,0 +1,14 @@
+node_modules/
+.pnpm-store/
+.turbo/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Local database and downloaded chapters
+server/data/

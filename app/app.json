@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Yogganga",
+    "slug": "yogganga",
+    "version": "0.1.0",
+    "scheme": "yogganga",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      "expo-sqlite",
+      "expo-status-bar",
+      "expo-secure-store"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.yogganga.reader"
+    },
+    "android": {
+      "package": "dev.yogganga.reader",
+      "edgeToEdgeEnabled": true
+    }
+  }
+}

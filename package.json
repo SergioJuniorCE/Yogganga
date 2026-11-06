@@ -1,0 +1,19 @@
+{
+  "name": "yogganga",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:server": "turbo run dev --filter=@yogganga/server",
+    "dev:app": "turbo run dev --filter=@yogganga/app",
+    "start": "turbo run start --filter=@yogganga/server",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.10"
+  }
+}
