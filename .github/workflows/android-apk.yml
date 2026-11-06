@@ -1,8 +1,6 @@
 name: Android APK
 
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
@@ -47,7 +45,6 @@ jobs:
           if-no-files-found: error
 
       - name: Publish nightly release
-        if: github.event_name != 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
