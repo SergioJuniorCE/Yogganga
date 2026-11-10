@@ -9,7 +9,33 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Check for new commits since the last nightly
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          # Manual runs always build, so a failed nightly can be retried.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/nightly" --jq .object.sha 2>/dev/null || true)
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No commits since the last nightly ($GITHUB_SHA); skipping the build."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,10 +71,46 @@ jobs:
         working-directory: app
         run: pnpm exec expo prebuild --platform android --no-install
 
+      - name: Stamp nightly version
+        working-directory: app
+        run: |
+          version="$(jq -r .expo.version app.json)-nightly.$(date -u +%Y%m%d)"
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"$version\"/" android/app/build.gradle
+          grep -q "versionCode ${{ github.run_number }}" android/app/build.gradle
+          grep -q "versionName \"$version\"" android/app/build.gradle
+
       - name: Build release APK
         working-directory: app/android
         # arm64 only: the other ABIs were ~3/4 of the native compile time.
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache
+
+      # Updates only install over APKs with the same signature, so the debug
+      # keystore Expo generates cannot be used for releases.
+      - name: Sign release APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set. Add the release signing secrets first (see README)."
+              exit 1
+            fi
+          done
+          apk=app/android/app/build/outputs/apk/release/app-release.apk
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          tools=$(ls -d "$sdk"/build-tools/* | sort -V | tail -n 1)
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          "$tools/apksigner" sign \
+            --ks "$RUNNER_TEMP/release.keystore" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            "$apk"
+          "$tools/apksigner" verify "$apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -62,11 +124,8 @@ jobs:
         run: |
           cp app/android/app/build/outputs/apk/release/app-release.apk yogganga-nightly.apk
           title="Yogganga nightly $(date -u +%Y-%m-%d)"
-          notes="Built from main at $(date -u '+%Y-%m-%d %H:%M UTC') (${GITHUB_SHA:0:7})."
-          # Prereleases are excluded from the repo sidebar, so the nightly must be a normal release.
-          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit nightly --repo "$GITHUB_REPOSITORY" --prerelease=false --title "$title" --notes "$notes"
-          else
-            gh release create nightly --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
-          fi
-          gh release upload nightly yogganga-nightly.apk --repo "$GITHUB_REPOSITORY" --clobber
+          notes=$(printf 'Built from main at %s (%s).\nversionCode: %s' \
+            "$(date -u '+%Y-%m-%d %H:%M UTC')" "${GITHUB_SHA:0:7}" "${{ github.run_number }}")
+          # Recreate the release so its tag always points at the built commit.
+          gh release delete nightly --cleanup-tag --yes || true
+          gh release create nightly yogganga-nightly.apk --target "$GITHUB_SHA" --title "$title" --notes "$notes"

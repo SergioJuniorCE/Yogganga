@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { useEffect } from 'react'
 import { ActivityIndicator, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { LoginScreen } from '@/components/LoginScreen'
 import { SessionProvider, useSession } from '@/lib/session'
 import { colors } from '@/lib/theme'
+import { checkAndPrompt } from '@/lib/updates'
 
 function Root() {
   const { status } = useSession()
@@ -37,6 +39,8 @@ function Root() {
 }
 
 export default function RootLayout() {
+  useEffect(checkAndPrompt, [])
+
   return (
     <SafeAreaProvider>
       <SessionProvider>

@@ -28,7 +28,10 @@
     },
     "android": {
       "package": "dev.yogganga.reader",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES"
+      ]
     }
   }
 }

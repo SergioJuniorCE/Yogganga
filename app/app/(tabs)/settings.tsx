@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import * as Application from 'expo-application'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -6,6 +7,7 @@ import { getStats, refreshLibrary, type Stats } from '@/lib/api'
 import { clearOffline, offlineStats } from '@/lib/offline'
 import { useSession } from '@/lib/session'
 import { colors, radius, spacing } from '@/lib/theme'
+import { checkForUpdate, promptInstall, updatesSupported } from '@/lib/updates'
 
 function bytesToHuman(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -20,6 +22,8 @@ export default function SettingsScreen() {
   const [offline, setOffline] = useState({ chapters: 0, bytes: 0 })
   const [refreshing, setRefreshing] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [updateMessage, setUpdateMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const loadStats = useCallback(async () => {
     try {
@@ -50,6 +54,20 @@ export default function SettingsScreen() {
       setMessage({ ok: false, text: cause instanceof Error ? cause.message : String(cause) })
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  const checkForAppUpdate = async () => {
+    setCheckingUpdate(true)
+    setUpdateMessage(null)
+    try {
+      const update = await checkForUpdate()
+      if (update) promptInstall(update)
+      else setUpdateMessage({ ok: true, text: 'This is the latest nightly.' })
+    } catch (cause) {
+      setUpdateMessage({ ok: false, text: cause instanceof Error ? cause.message : String(cause) })
+    } finally {
+      setCheckingUpdate(false)
     }
   }
 
@@ -129,6 +147,37 @@ export default function SettingsScreen() {
           <Text style={[styles.secondaryButtonText, { color: colors.warning }]}>Delete offline chapters</Text>
         </Pressable>
       </View>
+
+      {updatesSupported() ? (
+        <>
+          <Text style={styles.sectionTitle}>App</Text>
+          <View style={styles.card}>
+            <Row
+              label="Version"
+              value={`${Application.nativeApplicationVersion ?? 'unknown'} (${Application.nativeBuildVersion ?? '?'})`}
+            />
+            <Pressable style={styles.secondaryButton} onPress={checkForAppUpdate} disabled={checkingUpdate}>
+              {checkingUpdate ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.secondaryButtonText}>Check for updates</Text>
+              )}
+            </Pressable>
+            {updateMessage ? (
+              <View style={styles.statusRow}>
+                <Ionicons
+                  name={updateMessage.ok ? 'checkmark-circle' : 'alert-circle'}
+                  size={16}
+                  color={updateMessage.ok ? colors.success : colors.warning}
+                />
+                <Text style={[styles.statusText, { color: updateMessage.ok ? colors.success : colors.warning }]}>
+                  {updateMessage.text}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </>
+      ) : null}
 
       <Text style={styles.footer}>
         Metadata and chapter images come from MangaDex. Support the creators by buying the volumes you love.
