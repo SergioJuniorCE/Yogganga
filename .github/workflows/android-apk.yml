@@ -63,9 +63,10 @@ jobs:
           cp app/android/app/build/outputs/apk/release/app-release.apk yogganga-nightly.apk
           title="Yogganga nightly $(date -u +%Y-%m-%d)"
           notes="Built from main at $(date -u '+%Y-%m-%d %H:%M UTC') (${GITHUB_SHA:0:7})."
+          # Prereleases are excluded from the repo sidebar, so the nightly must be a normal release.
           if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit nightly --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
+            gh release edit nightly --repo "$GITHUB_REPOSITORY" --prerelease=false --title "$title" --notes "$notes"
           else
-            gh release create nightly --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes"
+            gh release create nightly --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
           fi
           gh release upload nightly yogganga-nightly.apk --repo "$GITHUB_REPOSITORY" --clobber

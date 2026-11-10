@@ -1,5 +1,9 @@
 # Yogganga
 
+[![Android APK](https://github.com/SergioJuniorCE/Yogganga/actions/workflows/android-apk.yml/badge.svg)](https://github.com/SergioJuniorCE/Yogganga/actions/workflows/android-apk.yml)
+[![Latest release](https://img.shields.io/github/v/release/SergioJuniorCE/Yogganga?label=latest)](https://github.com/SergioJuniorCE/Yogganga/releases/latest)
+[![Nightly](https://img.shields.io/badge/nightly-download-blue)](https://github.com/SergioJuniorCE/Yogganga/releases/tag/nightly)
+
 A self-hosted manga library, Arr-style in spirit: a small server owns the
 catalogue and downloads chapters, and an Expo app is the reader.
 
