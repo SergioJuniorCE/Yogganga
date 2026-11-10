@@ -12,3 +12,7 @@ web-build/
 
 # Local database and downloaded chapters
 server/data/
+
+# Android release signing
+*.keystore
+*.keystore.b64

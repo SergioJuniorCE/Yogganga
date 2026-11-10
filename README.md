@@ -150,6 +150,35 @@ All of these except health/login/register need `Authorization: Bearer <token>`.
 | `pnpm start` | Server without watch |
 | `pnpm typecheck` | `tsc --noEmit` in both packages |
 
+## Nightly builds and updates
+
+The Android workflow publishes the `nightly` release only when `main` has moved
+since the last one; a manual run always rebuilds. The app checks that release on
+launch and offers to download and install it. Android always shows its installer
+prompt — silent updates would require a store or a device-owner install.
+
+Every release must be signed with the same key or Android refuses the update.
+Generate a keystore once, back it up, and add it as repository secrets:
+
+```bash
+keytool -genkeypair -v -storetype PKCS12 -keystore release.keystore \
+  -alias yogganga -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.keystore > release.keystore.b64
+gh secret set ANDROID_KEYSTORE_BASE64 --repo SergioJuniorCE/Yogganga < release.keystore.b64
+gh secret set ANDROID_KEYSTORE_PASSWORD --repo SergioJuniorCE/Yogganga
+gh secret set ANDROID_KEY_ALIAS --repo SergioJuniorCE/Yogganga --body yogganga
+gh secret set ANDROID_KEY_PASSWORD --repo SergioJuniorCE/Yogganga
+```
+
+On Windows:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("release.keystore")) |
+  Set-Content -NoNewline -Encoding ascii release.keystore.b64
+```
+
+Keep the keystore backed up and out of git.
+
 ## Known limits
 
 - One server is one shared library. Users have their own follows and progress,
