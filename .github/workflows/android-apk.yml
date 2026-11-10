@@ -30,13 +30,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Gradle can only skip the native compile if the old outputs are on disk.
+      - name: Restore native build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/android
+            node_modules/**/build
+            node_modules/**/.cxx
+            node_modules/**/.gradle
+          key: android-native-v1-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', '.npmrc', 'app/package.json', 'app/app.json', '.github/workflows/android-apk.yml') }}
+
       - name: Generate Android project
         working-directory: app
         run: pnpm exec expo prebuild --platform android --no-install
 
       - name: Build release APK
         working-directory: app/android
-        run: ./gradlew assembleRelease
+        # arm64 only: the other ABIs were ~3/4 of the native compile time.
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache
 
       - uses: actions/upload-artifact@v4
         with:
