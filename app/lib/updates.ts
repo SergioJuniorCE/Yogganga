@@ -5,6 +5,7 @@ import { Alert, Platform } from 'react-native'
 
 const RELEASE_URL = 'https://api.github.com/repos/SergioJuniorCE/Yogganga/releases/tags/nightly'
 const APK_NAME = 'yogganga-nightly.apk'
+const UPDATE_TIMEOUT_MS = 10_000
 
 type Release = {
   name?: string
@@ -28,20 +29,31 @@ export async function checkForUpdate(): Promise<AppUpdate | null> {
   const installed = Number(Application.nativeBuildVersion)
   if (!Number.isFinite(installed)) return null
 
-  const response = await fetch(RELEASE_URL, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Yogganga' },
-  })
-  if (!response.ok) throw new Error(`GitHub returned ${response.status}`)
-  const release = (await response.json()) as Release
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), UPDATE_TIMEOUT_MS)
 
-  const versionCode = Number(/^versionCode:\s*(\d+)$/m.exec(release.body ?? '')?.[1])
-  const asset = release.assets?.find((entry) => entry.name === APK_NAME)
-  if (!versionCode || !asset || versionCode <= installed) return null
+  try {
+    const response = await fetch(RELEASE_URL, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Yogganga' },
+      signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(`GitHub returned ${response.status}`)
+    const release = (await response.json()) as Release
 
-  return {
-    versionCode,
-    versionName: release.name ?? `nightly ${versionCode}`,
-    downloadUrl: asset.browser_download_url,
+    const versionCode = Number(/^versionCode:\s*(\d+)$/m.exec(release.body ?? '')?.[1])
+    const asset = release.assets?.find((entry) => entry.name === APK_NAME)
+    if (!versionCode || !asset || versionCode <= installed) return null
+
+    return {
+      versionCode,
+      versionName: release.name ?? `nightly ${versionCode}`,
+      downloadUrl: asset.browser_download_url,
+    }
+  } catch (cause) {
+    if (controller.signal.aborted) throw new Error('Timed out checking for updates')
+    throw cause
+  } finally {
+    clearTimeout(timer)
   }
 }
 

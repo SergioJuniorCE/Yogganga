@@ -142,37 +142,61 @@ export function needsAuth(uri: string): boolean {
   return !/^https?:\/\//i.test(uri) && !uri.startsWith('file://')
 }
 
-type RequestOptions = { method?: string; body?: unknown; skipAuthHandler?: boolean }
+// The server is local/Tailscale, so a healthy request takes well under a second.
+const REQUEST_TIMEOUT_MS = 12_000
+// Login blocks a form, so fail faster there.
+const AUTH_TIMEOUT_MS = 8_000
+
+type RequestOptions = {
+  method?: string
+  body?: unknown
+  skipAuthHandler?: boolean
+  timeoutMs?: number
+}
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   if (!baseUrl) throw new Error('Server URL is not set')
 
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
   const headers: Record<string, string> = { Accept: 'application/json', ...authHeaders() }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    })
 
-  if (response.status === 401 && sessionToken && !options.skipAuthHandler) {
-    onUnauthorized?.()
-  }
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    let message = `HTTP ${response.status}`
-    try {
-      const parsed = JSON.parse(text) as { error?: string }
-      if (parsed.error) message = parsed.error
-    } catch {
-      if (text) message = text.slice(0, 200)
+    if (response.status === 401 && sessionToken && !options.skipAuthHandler) {
+      onUnauthorized?.()
     }
-    throw new Error(message)
-  }
 
-  return (await response.json()) as T
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      let message = `HTTP ${response.status}`
+      try {
+        const parsed = JSON.parse(text) as { error?: string }
+        if (parsed.error) message = parsed.error
+      } catch {
+        if (text) message = text.slice(0, 200)
+      }
+      throw new Error(message)
+    }
+
+    return (await response.json()) as T
+  } catch (cause) {
+    if (controller.signal.aborted) {
+      throw new Error(`Server unreachable: timed out after ${Math.round(timeoutMs / 1000)}s`)
+    }
+    throw cause
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /* ---------------- auth ---------------- */
@@ -182,6 +206,7 @@ export function login(username: string, password: string): Promise<AuthResult> {
     method: 'POST',
     body: { username, password },
     skipAuthHandler: true,
+    timeoutMs: AUTH_TIMEOUT_MS,
   })
 }
 
@@ -190,6 +215,7 @@ export function register(username: string, password: string, invite: string): Pr
     method: 'POST',
     body: { username, password, invite },
     skipAuthHandler: true,
+    timeoutMs: AUTH_TIMEOUT_MS,
   })
 }
 
