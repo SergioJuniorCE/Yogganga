@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { loadProfiles, removeProfile, type Profile } from '@/lib/profiles'
 import { useSession } from '@/lib/session'
 import { colors, radius, spacing } from '@/lib/theme'
 
@@ -26,6 +27,36 @@ export function LoginScreen() {
   const [invite, setInvite] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [profiles, setProfiles] = useState<Profile[]>([])
+
+  // Prefill the most recent saved profile, so a fresh launch only needs a tap on Sign in.
+  useEffect(() => {
+    let cancelled = false
+    void loadProfiles().then((saved) => {
+      if (cancelled) return
+      setProfiles(saved)
+      const remembered = saved[0]
+      if (!remembered) return
+      setUrl((current) => current || remembered.serverUrl)
+      setUsername((current) => current || remembered.username)
+      setPassword((current) => current || remembered.password)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const useSavedProfile = (profile: Profile) => {
+    setUrl(profile.serverUrl)
+    setUsername(profile.username)
+    setPassword(profile.password)
+    setError(null)
+  }
+
+  const forgetProfile = async (id: string) => {
+    await removeProfile(id).catch(() => {})
+    setProfiles((current) => current.filter((profile) => profile.id !== id))
+  }
 
   const submit = async () => {
     if (busy) return
@@ -65,6 +96,38 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+          {mode === 'signin' && profiles.length > 0 ? (
+            <>
+              <Text style={styles.label}>Saved profiles</Text>
+              {profiles.map((profile) => (
+                <View key={profile.id} style={styles.profileRow}>
+                  <Pressable
+                    style={styles.profileMain}
+                    onPress={() => useSavedProfile(profile)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Use ${profile.username} on ${profile.serverUrl}`}
+                  >
+                    <Ionicons name="person-circle-outline" size={26} color={colors.accent} />
+                    <View style={styles.profileInfo}>
+                      <Text style={styles.profileName}>{profile.username}</Text>
+                      <Text numberOfLines={1} style={styles.profileServer}>
+                        {profile.serverUrl.replace(/^https?:\/\//, '')}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    hitSlop={10}
+                    onPress={() => void forgetProfile(profile.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${profile.username}`}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.muted} />
+                  </Pressable>
+                </View>
+              ))}
+            </>
+          ) : null}
+
           <Text style={styles.label}>Server</Text>
           <TextInput
             value={url}
@@ -200,6 +263,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: spacing.sm,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  profileMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  profileServer: {
+    color: colors.muted,
+    fontSize: 12,
   },
   input: {
     backgroundColor: colors.surface,
