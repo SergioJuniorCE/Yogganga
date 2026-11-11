@@ -186,7 +186,7 @@ this Docker setup. That is the one thing this design does not provide.
 
 | Path | Purpose |
 | --- | --- |
-| `Dockerfile` | Node 24 image; runs `src/index.ts` directly |
+| `Dockerfile` | Node 26 image; runs `src/index.ts` directly |
 | `compose.yaml` | Container, ports, data bind mount, healthcheck, restart policy |
 | `.dockerignore` | Keeps the app, data, and secrets out of the build context |
 | `windows\install.ps1` | Installer and `-DryRun` |

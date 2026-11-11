@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 
 ENV NODE_ENV=production
 WORKDIR /app
@@ -18,6 +18,6 @@ COPY server ./server
 WORKDIR /app/server
 EXPOSE 8787
 
-# Node 24 runs the TypeScript entrypoint directly. server/.env is supplied at
+# Node 26 runs the TypeScript entrypoint directly. server/.env is supplied at
 # runtime through compose, not baked into the image.
 CMD ["node", "--env-file-if-exists=.env", "src/index.ts"]
