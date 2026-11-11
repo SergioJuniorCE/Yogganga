@@ -1,0 +1,4 @@
+# Docker parses these on every platform; CRLF breaks Dockerfile lines.
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+compose.yaml text eol=lf

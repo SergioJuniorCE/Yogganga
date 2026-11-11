@@ -11,8 +11,12 @@ web-build/
 .DS_Store
 
 # Local database and downloaded chapters
-server/data/
+server/data/*
+!server/data/.gitkeep
 
 # Android release signing
 *.keystore
 *.keystore.b64
+
+# Compiled Windows tray app
+windows/tray/bin/

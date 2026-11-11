@@ -70,6 +70,14 @@ Turborepo runs in strict env mode, so any new server variable must also be
 added to `globalPassThroughEnv` in `turbo.json` or it will be stripped before
 the task sees it.
 
+## Running on Windows in a container
+
+`windows/install.ps1` builds a Docker/Podman container, bind-mounts
+`server/data`, and installs a tray app for status, start/stop/restart, logs and
+opening the data folder. It starts at user sign-in; it is not a boot-time
+Windows service. See [windows/README.md](windows/README.md) for install,
+dry-run, uninstall, and the startup tradeoff.
+
 ## App
 
 ```bash
