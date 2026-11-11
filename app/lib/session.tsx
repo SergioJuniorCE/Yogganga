@@ -19,6 +19,7 @@ import {
   setUnauthorizedHandler,
   type User,
 } from './api'
+import { saveProfile } from './profiles'
 
 const TOKEN_KEY = 'manga.session'
 const SERVER_KEY = 'serverUrl'
@@ -134,6 +135,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       configure(clean, '')
       const result = await apiLogin(username, password)
       await persist(clean, result.token, result.user)
+      await saveProfile(clean, result.user.username, password).catch(() => {})
     },
     [persist],
   )
@@ -144,6 +146,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       configure(clean, '')
       const result = await apiRegister(username, password, invite)
       await persist(clean, result.token, result.user)
+      await saveProfile(clean, result.user.username, password).catch(() => {})
     },
     [persist],
   )
