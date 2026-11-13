@@ -1,0 +1,14 @@
+.git
+.github
+.gitignore
+.gitattributes
+.turbo
+.expo
+node_modules
+**/node_modules
+**/*.log
+server/data
+server/.env
+windows
+app/*
+!app/package.json
