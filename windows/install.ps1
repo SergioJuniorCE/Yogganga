@@ -143,6 +143,11 @@ function Start-Engine($EngineInfo) {
     }
     else {
         Write-Step 'Starting the Podman machine...'
+        $machines = Get-NativeText -FilePath $EngineInfo.Exe -Arguments @('machine', 'list', '--format', '{{.Name}}')
+        if (-not $machines.Trim()) {
+            Write-Step 'No Podman machine exists; creating one (this downloads the VM image)...'
+            if ((Invoke-Native -FilePath $EngineInfo.Exe -Arguments @('machine', 'init')) -ne 0) { return $false }
+        }
         $null = Invoke-Native -FilePath $EngineInfo.Exe -Arguments @('machine', 'start')
     }
 
@@ -193,10 +198,6 @@ if (-not $ServerUrl) {
     $ServerUrl = 'http://' + (Get-ServerHost) + ':' + $port
 }
 
-if (-not (Test-Compose $engineInfo)) {
-    Fail "$($engineInfo.Label) Compose is not available. Update $($engineInfo.Label) so 'compose' works."
-}
-
 $engineReady = Test-EngineReady $engineInfo
 
 if ($DryRun) {
@@ -216,7 +217,7 @@ if ($DryRun) {
     else { Write-Note "Firewall:  would allow TCP $port on Private/Domain" }
     Write-Note 'Actions:   build image, compose up -d, wait for /api/health, register tray at sign-in'
 
-    if (Test-Path $EnvFile) {
+    if ((Test-Path $EnvFile) -and $engineReady) {
         Push-Location $RepoRoot
         try {
             $configExit = Invoke-Native -FilePath $engineInfo.Exe -Arguments @('compose', '-f', $ComposeFile, 'config') -Quiet
@@ -225,6 +226,7 @@ if ($DryRun) {
         finally { Pop-Location }
         Write-Note 'compose config: valid'
     }
+    elseif (Test-Path $EnvFile) { Write-Note 'compose config: skipped (engine not running)' }
     return
 }
 
@@ -233,6 +235,12 @@ if (-not $engineReady) {
     if (-not (Start-Engine $engineInfo)) {
         Fail "$($engineInfo.Label) did not become ready. Start it manually, then rerun this script."
     }
+}
+
+# Compose needs the engine connection, so this check has to run after the
+# engine is started. Checking earlier reports a false negative on every reboot.
+if (-not (Test-Compose $engineInfo)) {
+    Fail "$($engineInfo.Label) Compose is not available. Update $($engineInfo.Label) so 'compose' works."
 }
 
 if (-not (Test-Path $EnvFile)) {
