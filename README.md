@@ -78,6 +78,28 @@ opening the data folder. It starts at user sign-in; it is not a boot-time
 Windows service. See [windows/README.md](windows/README.md) for install,
 dry-run, uninstall, and the startup tradeoff.
 
+## Read on your phone with Tailscale
+
+The short version: the PC runs the server, the phone is the reader, and
+Tailscale connects them without exposing anything to the internet.
+
+1. On the PC, install Tailscale and sign in. Then install the server and tray
+   app by following [windows/README.md](windows/README.md). That one-time
+   installer needs an elevated PowerShell.
+2. On the phone, install Tailscale and sign in with the same account.
+3. On the phone, install the Yogganga APK from the
+   [nightly release](https://github.com/SergioJuniorCE/Yogganga/releases/download/nightly/yogganga-nightly.apk).
+4. Open Yogganga, enter the server URL shown by the tray on the PC (**Copy
+   server URL**), and sign in. On a fresh server the first account is the
+   owner; after that, new accounts need `MANGA_INVITE_CODE`.
+5. Search MangaDex, follow a series, and open a chapter. The default "new" mode
+   only downloads new chapters; older chapters stream from MangaDex. Tap the
+   download icon on a chapter to keep it on the server.
+
+The URL looks like `http://your-pc.your-tailnet.ts.net:8787`. If the phone
+cannot connect, see [the troubleshooting
+section](windows/README.md#troubleshooting).
+
 ## App
 
 ```bash

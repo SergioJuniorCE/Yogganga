@@ -161,6 +161,19 @@ check that Tailscale is connected on both devices and shows the expected
 Tailscale adapter is marked Public, change the network profile or adjust the
 rule. Use the tray's **Copy server URL**.
 
+If you use Podman, its WSL port forwarding listens on `127.0.0.1` only, so the
+Tailscale address is not reachable until you add a port proxy. In an elevated
+PowerShell (replace `100.x.y.z` with the PC's Tailscale IPv4 address):
+
+```powershell
+netsh interface portproxy add v4tov4 `
+  listenaddress=100.x.y.z listenport=8787 `
+  connectaddress=127.0.0.1 connectport=8787
+```
+
+Use `http://100.x.y.z:8787` in the app. If the MagicDNS hostname hangs on the
+phone, use the IPv4 URL instead.
+
 **Port 8787 is already in use.** Stop the terminal server:
 
 ```powershell
